@@ -19,9 +19,11 @@ class _TelaBancadaState extends State<TelaBancada> {
   final Map<String, Peca> escolhidas = {};
   bool mostrarLinks = false;
   final GlobalKey linksKey = GlobalKey();
+  final GlobalKey pecasKey = GlobalKey();
 
   int get total => escolhidas.values.fold(0, (soma, p) => soma + p.preco);
 
+  // Tela de celular: menos de 600 px de largura.
   bool get celular => MediaQuery.of(context).size.width < 600;
 
   void escolher(String cat, Peca? p) {
@@ -41,6 +43,17 @@ class _TelaBancadaState extends State<TelaBancada> {
         final p = acharPeca(cat, id);
         if (p != null) escolhidas[cat] = p;
       });
+    });
+    // Desce sozinho até a parte das peças.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = pecasKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
     });
     aviso('Montagem "${m.nome}" carregada. Você pode trocar qualquer peça.');
   }
@@ -82,72 +95,88 @@ class _TelaBancadaState extends State<TelaBancada> {
     aviso('Links copiados!');
   }
 
+  // ---------- Construção da tela ----------
   @override
   Widget build(BuildContext context) {
     final regras = verificar(escolhidas);
     final cel = celular;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Cores.fundo,
-        surfaceTintColor: Colors.transparent,
-        shape: const Border(bottom: BorderSide(color: Cores.borda)),
-        title: Text(
-          'Bancada PC',
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: cel ? 20 : 24,
-            fontWeight: FontWeight.w700,
-            color: Cores.destaque,
-          ),
-        ),
-        actions: [
-          if (cel)
-            IconButton(
-              onPressed: limpar,
-              tooltip: 'Limpar bancada',
-              icon: const Icon(Icons.delete_outline, color: Cores.texto),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: OutlinedButton(
-                onPressed: limpar,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Cores.texto,
-                  backgroundColor: Cores.superficie,
-                  side: const BorderSide(color: Cores.borda),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+      body: CustomScrollView(
+        slivers: [
+          // Barra do topo: some ao rolar para baixo e volta ao rolar para cima.
+          SliverAppBar(
+            floating: true,
+            snap: true,
+            backgroundColor: Cores.fundo,
+            surfaceTintColor: Colors.transparent,
+            shape: const Border(bottom: BorderSide(color: Cores.borda)),
+            title: Text(
+              'Bancada PC',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: cel ? 20 : 24,
+                fontWeight: FontWeight.w700,
+                color: Cores.destaque,
+              ),
+            ),
+            actions: [
+              if (cel)
+                IconButton(
+                  onPressed: limpar,
+                  tooltip: 'Limpar bancada',
+                  icon: const Icon(Icons.delete_outline, color: Cores.texto),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: OutlinedButton(
+                    onPressed: limpar,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Cores.texto,
+                      backgroundColor: Cores.superficie,
+                      side: const BorderSide(color: Cores.borda),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text('Limpar bancada'),
                   ),
                 ),
-                child: const Text('Limpar bancada'),
-              ),
-            ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(cel ? 16 : 20, 0, cel ? 16 : 20, 40),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _hero(),
-                  _montagensProntas(),
-                  _titulo(
-                    'Escolha as peças',
-                    'Cada lista vai da peça mais antiga para a mais nova. A peça com ★ é uma boa escolha para a maioria das pessoas.',
+            ],
+          ),
+          SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1100),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    cel ? 16 : 20,
+                    0,
+                    cel ? 16 : 20,
+                    40,
                   ),
-                  _layout(regras),
-                  _analise(),
-                  if (mostrarLinks && escolhidas.isNotEmpty) _links(),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _hero(),
+                      _montagensProntas(),
+                      Container(
+                        key: pecasKey,
+                        child: _titulo(
+                          'Escolha as peças',
+                          'Cada lista vai da peça mais antiga para a mais nova. A peça com ★ é uma boa escolha para a maioria das pessoas.',
+                        ),
+                      ),
+                      _layout(regras),
+                      _analise(),
+                      if (mostrarLinks && escolhidas.isNotEmpty) _links(),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -213,6 +242,7 @@ class _TelaBancadaState extends State<TelaBancada> {
     );
   }
 
+  // ---------- Montagens prontas ----------
   Widget _montagensProntas() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 36),
@@ -321,6 +351,7 @@ class _TelaBancadaState extends State<TelaBancada> {
     );
   }
 
+  // ---------- Cartões de escolha ----------
   Widget _pecas(List<Regra> regras) {
     final erros = <String>{
       for (final r in regras.where((r) => r.nivel == Nivel.erro)) ...r.pecas,
@@ -425,20 +456,13 @@ class _TelaBancadaState extends State<TelaBancada> {
                   ),
                 ),
               ),
-            if (escolhida.rec)
-              const Padding(
-                padding: EdgeInsets.only(top: 6),
-                child: Text(
-                  '★ Boa escolha para a maioria das pessoas',
-                  style: TextStyle(color: Cores.aviso, fontSize: 13),
-                ),
-              ),
           ],
         ],
       ),
     );
   }
 
+  // ---------- Resumo ----------
   Widget _resumo(List<Regra> regras) {
     final cpu = escolhidas['cpu'];
     final gpu = escolhidas['gpu'];
@@ -629,6 +653,7 @@ class _TelaBancadaState extends State<TelaBancada> {
     );
   }
 
+  // ---------- Análise de gargalo ----------
   Widget _analise() {
     final cpu = escolhidas['cpu'];
     final gpu = escolhidas['gpu'];
@@ -859,7 +884,7 @@ class _TelaBancadaState extends State<TelaBancada> {
   }
 
   Widget _medidor(Gargalo g) {
-    final x = (g.posicao + 1) / 2;
+    final x = (g.posicao + 1) / 2; // 0 (esquerda) até 1 (direita)
     return Column(
       children: [
         SizedBox(
@@ -938,6 +963,7 @@ class _TelaBancadaState extends State<TelaBancada> {
     );
   }
 
+  // ---------- Links das lojas ----------
   Widget _links() {
     return Container(
       key: linksKey,
