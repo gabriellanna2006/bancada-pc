@@ -23,7 +23,6 @@ class _TelaBancadaState extends State<TelaBancada> {
 
   int get total => escolhidas.values.fold(0, (soma, p) => soma + p.preco);
 
-  // Tela de celular: menos de 600 px de largura.
   bool get celular => MediaQuery.of(context).size.width < 600;
 
   void escolher(String cat, Peca? p) {
@@ -44,7 +43,7 @@ class _TelaBancadaState extends State<TelaBancada> {
         if (p != null) escolhidas[cat] = p;
       });
     });
-    // Desce sozinho até a parte das peças.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctx = pecasKey.currentContext;
       if (ctx != null) {
@@ -95,7 +94,6 @@ class _TelaBancadaState extends State<TelaBancada> {
     aviso('Links copiados!');
   }
 
-  // ---------- Construção da tela ----------
   @override
   Widget build(BuildContext context) {
     final regras = verificar(escolhidas);
@@ -104,7 +102,6 @@ class _TelaBancadaState extends State<TelaBancada> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // Barra do topo: some ao rolar para baixo e volta ao rolar para cima.
           SliverAppBar(
             floating: true,
             snap: true,
@@ -242,7 +239,6 @@ class _TelaBancadaState extends State<TelaBancada> {
     );
   }
 
-  // ---------- Montagens prontas ----------
   Widget _montagensProntas() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 36),
@@ -351,7 +347,6 @@ class _TelaBancadaState extends State<TelaBancada> {
     );
   }
 
-  // ---------- Cartões de escolha ----------
   Widget _pecas(List<Regra> regras) {
     final erros = <String>{
       for (final r in regras.where((r) => r.nivel == Nivel.erro)) ...r.pecas,
@@ -462,7 +457,6 @@ class _TelaBancadaState extends State<TelaBancada> {
     );
   }
 
-  // ---------- Resumo ----------
   Widget _resumo(List<Regra> regras) {
     final cpu = escolhidas['cpu'];
     final gpu = escolhidas['gpu'];
@@ -653,7 +647,6 @@ class _TelaBancadaState extends State<TelaBancada> {
     );
   }
 
-  // ---------- Análise de gargalo ----------
   Widget _analise() {
     final cpu = escolhidas['cpu'];
     final gpu = escolhidas['gpu'];
@@ -884,7 +877,7 @@ class _TelaBancadaState extends State<TelaBancada> {
   }
 
   Widget _medidor(Gargalo g) {
-    final x = (g.posicao + 1) / 2; // 0 (esquerda) até 1 (direita)
+    final x = (g.posicao + 1) / 2;
     return Column(
       children: [
         SizedBox(
@@ -963,7 +956,6 @@ class _TelaBancadaState extends State<TelaBancada> {
     );
   }
 
-  // ---------- Links das lojas ----------
   Widget _links() {
     return Container(
       key: linksKey,
