@@ -161,7 +161,7 @@ class _TelaBancadaState extends State<TelaBancada> {
                         key: pecasKey,
                         child: _titulo(
                           'Escolha as peças',
-                          'Cada lista vai da peça mais antiga para a mais nova. A peça com ★ é uma boa escolha para a maioria dos usuários.',
+                          'Cada lista vai da peça mais antiga para a mais nova. A peça com ★ é uma opção recomendada para a maioria dos usuários.',
                         ),
                       ),
                       _layout(regras),
