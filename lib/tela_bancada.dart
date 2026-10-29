@@ -23,7 +23,70 @@ class _TelaBancadaState extends State<TelaBancada> {
 
   int get total => escolhidas.values.fold(0, (soma, p) => soma + p.preco);
 
-  bool get celular => MediaQuery.of(context).size.width < 600;
+  bool get celular => MediaQuery.sizeOf(context).width < 600;
+
+  void _toast(IconData icone, Color cor, String titulo, [String? sub]) {
+    final m = ScaffoldMessenger.of(context);
+    final largura = MediaQuery.sizeOf(context).width;
+    final lateral = largura > 480 ? (largura - 440) / 2 : 16.0;
+
+    m.hideCurrentSnackBar();
+    m.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Cores.superficie,
+        elevation: 8,
+        duration: const Duration(milliseconds: 2800),
+        margin: EdgeInsets.fromLTRB(lateral, 0, lateral, 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: cor),
+        ),
+        content: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: cor.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icone, color: cor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: Cores.texto,
+                    ),
+                  ),
+                  if (sub != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        sub,
+                        style: const TextStyle(
+                          color: Cores.textoSuave,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   void escolher(String cat, Peca? p) {
     setState(() {
@@ -54,23 +117,44 @@ class _TelaBancadaState extends State<TelaBancada> {
         );
       }
     });
-    aviso('Montagem "${m.nome}" carregada. Você pode trocar qualquer peça.');
+    _toast(
+      Icons.check_rounded,
+      Cores.ok,
+      'Montagem "${m.nome}" carregada',
+      'Você pode trocar qualquer peça.',
+    );
   }
 
   void limpar() {
+    if (escolhidas.isEmpty) {
+      _toast(
+        Icons.info_outline_rounded,
+        Cores.destaque,
+        'A bancada já está vazia',
+        'Escolha as peças para começar.',
+      );
+      return;
+    }
     setState(() {
       escolhidas.clear();
       mostrarLinks = false;
     });
-  }
-
-  void aviso(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    _toast(
+      Icons.check_rounded,
+      Cores.ok,
+      'Bancada limpa com sucesso!',
+      'Todas as peças foram removidas. Monte um novo PC quando quiser.',
+    );
   }
 
   void gerarLinks() {
     if (escolhidas.isEmpty) {
-      aviso('Escolha pelo menos uma peça antes de gerar os links.');
+      _toast(
+        Icons.warning_amber_rounded,
+        Cores.aviso,
+        'Escolha pelo menos uma peça',
+        'Depois é só gerar os links das lojas.',
+      );
       return;
     }
     setState(() => mostrarLinks = true);
@@ -91,13 +175,32 @@ class _TelaBancadaState extends State<TelaBancada> {
 
   Future<void> copiarLinks() async {
     await Clipboard.setData(ClipboardData(text: gerarTexto(escolhidas)));
-    aviso('Links copiados!');
+    if (!mounted) return;
+    _toast(
+      Icons.check_rounded,
+      Cores.ok,
+      'Links copiados!',
+      'Agora é só colar onde quiser.',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final regras = verificar(escolhidas);
     final cel = celular;
+    final lateral = cel ? 16.0 : 20.0;
+
+    Widget secao(Widget filho) => SliverToBoxAdapter(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: lateral),
+            child: RepaintBoundary(child: filho),
+          ),
+        ),
+      ),
+    );
 
     return Scaffold(
       body: CustomScrollView(
@@ -141,38 +244,33 @@ class _TelaBancadaState extends State<TelaBancada> {
                 ),
             ],
           ),
-          SliverToBoxAdapter(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    cel ? 16 : 20,
-                    0,
-                    cel ? 16 : 20,
-                    40,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _hero(),
-                      _montagensProntas(),
-                      Container(
-                        key: pecasKey,
-                        child: _titulo(
-                          'Escolha as peças',
-                          'Cada lista vai da peça mais antiga para a mais nova. A peça com ★ é uma opção recomendada para a maioria dos usuários.',
-                        ),
-                      ),
-                      _layout(regras),
-                      _analise(),
-                      if (mostrarLinks && escolhidas.isNotEmpty) _links(),
-                    ],
+          secao(_hero()),
+          secao(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _montagensProntas(),
+                Container(
+                  key: pecasKey,
+                  child: _titulo(
+                    'Escolha as peças',
+                    'Cada lista vai da peça mais antiga para a mais nova. A peça com ★ é uma boa escolha para a maioria das pessoas.',
                   ),
                 ),
-              ),
+              ],
             ),
           ),
+          secao(_layout(regras)),
+          secao(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _analise(),
+                if (mostrarLinks && escolhidas.isNotEmpty) _links(),
+              ],
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
       ),
     );
